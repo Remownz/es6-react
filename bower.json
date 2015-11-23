@@ -1,0 +1,19 @@
+{
+  "name": "frontend-setup",
+  "description": "",
+  "main": "index.js",
+  "license": "ISC",
+  "moduleType": [],
+  "homepage": "",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "font-awesome": "fontawesome#~4.4.0",
+    "bootstrap-sass": "bootstrap-sass-official#~3.3.5"
+  }
+}
