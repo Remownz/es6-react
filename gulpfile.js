@@ -14,10 +14,8 @@ var gulp = require('gulp'),
             'gulp-rename': 'rename',
             'gulp-size': 'size',
             'gulp-bundle': 'bundle',
-            'gulp-minify-html': 'minifyHTML',
             'gulp-flatten': 'flatten',
             'gulp-util': 'gutil',
-            'gulp-header': 'header',
             'gulp-livereload': 'livereload'
         }
     }),
@@ -33,7 +31,7 @@ var gulp = require('gulp'),
 var pkg = require('./package.json');
 var dirs = pkg['project-configs'].directories;
 var config = pkg['project-configs'].config;
-var banner = require('./banner.js');
+
 
 /*************************************************************************
  *  Helper Tasks
@@ -126,7 +124,6 @@ gulp.task('build:html', function () {
     return gulp.src(dirs.src + '/**/*.html')
         .pipe(plugins.debug({title: config.debug.title}))
         .pipe(plugins.size())
-        .pipe(plugins.minifyHTML())
         .pipe(gulp.dest(dirs.dist));
 
 });
