@@ -36,7 +36,7 @@
     "run-sequence": "^1.1.4",
     "sass-lint": "^1.5.0",
     "vinyl-buffer": "^1.0.0",
-    "vinyl-source-stream": "^1.1.0",
+    "vinyl-source-stream": "^1.1.0"
   },
   "project-configs": {
     "directories": {

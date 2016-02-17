@@ -137,13 +137,11 @@ gulp.task('build:js', function () {
         .bundle()
         .pipe(source('app.js'))
         .pipe(buffer())
-        .pipe(plugins.header(banner, {pkg: pkg}))
         .pipe(plugins.debug({title: config.debug.title}))
         .pipe(plugins.size())
         .pipe(gulp.dest(dirs.dist + '/js/'))
         .pipe(plugins.rename({suffix: '.min'}))
         .pipe(plugins.uglify())
-        .pipe(plugins.header(banner, {pkg: pkg}))
         .pipe(plugins.debug({title: config.debug.title}))
         .pipe(plugins.size())
         .pipe(gulp.dest(dirs.dist + '/js'))
@@ -159,7 +157,7 @@ gulp.task('build:js', function () {
  *   http://bourbon.io/
  */
 gulp.task('build:sass', function () {
-    gulp.src(dirs.src + '/scss/app.scss')
+    gulp.src(dirs.src + '/scss/app.s+(a|c)ss')
         .pipe(plugins.sourcemaps.init())
         .pipe(plugins.sassGlob())
         .pipe(plugins.sass({
@@ -172,13 +170,11 @@ gulp.task('build:sass', function () {
         ], {
             cascade: true
         }))
-        .pipe(plugins.header(banner, {pkg: pkg}))
         .pipe(plugins.debug({title: config.debug.title}))
         .pipe(plugins.size())
         .pipe(gulp.dest(dirs.dist + '/css/'))
         .pipe(plugins.rename({suffix: '.min'}))
         .pipe(plugins.sass({outputStyle: 'compressed'}))
-        .pipe(plugins.header(banner, {pkg: pkg}))
         .pipe(plugins.debug({title: config.debug.title}))
         .pipe(plugins.size())
         .pipe(plugins.sourcemaps.write('./'))
@@ -192,7 +188,7 @@ gulp.task('build:sass', function () {
 gulp.task('watch', function () {
     livereload.listen();
     gulp.watch(dirs.src + '/js/**/*.js', ['lint:js', 'build:js']);
-    gulp.watch(dirs.src + '/scss/**/*.scss', ['lint:scss', 'build:sass']);
+    gulp.watch(dirs.src + '/scss/**/*.s+(a|c)ss', ['lint:sass', 'build:sass']);
     gulp.watch(dirs.src + '/**/*.html', ['build:html']);
     gulp.watch(dirs.src + '/img/**', ['copy:img']);
 });
