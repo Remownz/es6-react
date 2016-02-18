@@ -16,7 +16,8 @@ var gulp = require('gulp'),
             'gulp-bundle': 'bundle',
             'gulp-flatten': 'flatten',
             'gulp-util': 'gutil',
-            'gulp-livereload': 'livereload'
+            'gulp-livereload': 'livereload',
+            'gulp-changed': 'changed'
         }
     }),
     bourbon = require('node-bourbon'),
@@ -125,7 +126,6 @@ gulp.task('build:html', function () {
         .pipe(plugins.debug({title: config.debug.title}))
         .pipe(plugins.size())
         .pipe(gulp.dest(dirs.dist));
-
 });
 
 /**
@@ -137,13 +137,14 @@ gulp.task('build:js', function () {
         .bundle()
         .pipe(source('app.js'))
         .pipe(buffer())
+        .pipe(plugins.sourcemaps.init())
         .pipe(plugins.debug({title: config.debug.title}))
         .pipe(plugins.size())
-        .pipe(gulp.dest(dirs.dist + '/js/'))
         .pipe(plugins.rename({suffix: '.min'}))
         .pipe(plugins.uglify())
         .pipe(plugins.debug({title: config.debug.title}))
         .pipe(plugins.size())
+        .pipe(plugins.sourcemaps.write('./'))
         .pipe(gulp.dest(dirs.dist + '/js'))
         .pipe(livereload());
 });
@@ -157,7 +158,11 @@ gulp.task('build:js', function () {
  *   http://bourbon.io/
  */
 gulp.task('build:sass', function () {
-    gulp.src(dirs.src + '/scss/app.s+(a|c)ss')
+    var SRC = dirs.src + '/scss/*.s+(a|c)ss';
+    var DEST = dirs.dist + '/css/';
+
+    return gulp.src(SRC)
+        .pipe(plugins.changed(DEST, {extension: '.css'}))
         .pipe(plugins.sourcemaps.init())
         .pipe(plugins.sassGlob())
         .pipe(plugins.sass({
@@ -172,14 +177,14 @@ gulp.task('build:sass', function () {
         }))
         .pipe(plugins.debug({title: config.debug.title}))
         .pipe(plugins.size())
-        .pipe(gulp.dest(dirs.dist + '/css/'))
+        .pipe(gulp.dest(DEST))
         .pipe(plugins.rename({suffix: '.min'}))
         .pipe(plugins.sass({outputStyle: 'compressed'}))
         .pipe(plugins.debug({title: config.debug.title}))
         .pipe(plugins.size())
         .pipe(plugins.sourcemaps.write('./'))
-        .pipe(gulp.dest(dirs.dist + '/css/'))
-        .pipe(livereload());
+        .pipe(gulp.dest(DEST));
+    //.pipe(livereload());
 });
 
 /**
