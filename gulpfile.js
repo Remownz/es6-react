@@ -1,32 +1,13 @@
 'use strict';
 
 var gulp = require('gulp'),
-    plugins = require('gulp-load-plugins')({
-        rename: {
-            'gulp-sass': 'sass',
-            'gulp-sass-glob': 'sassGlob',
-            'gulp-autoprefixer': 'prefix',
-            'gulp-sourcemaps': 'sourcemaps',
-            'gulp-jshint': 'jshint',
-            'gulp-jscs': 'jscs',
-            'gulp-concat': 'concat',
-            'gulp-uglify': 'uglify',
-            'gulp-rename': 'rename',
-            'gulp-size': 'size',
-            'gulp-bundle': 'bundle',
-            'gulp-flatten': 'flatten',
-            'gulp-util': 'gutil',
-            'gulp-livereload': 'livereload',
-            'gulp-changed': 'changed'
-        }
-    }),
+    plugins = require('gulp-load-plugins')(),
     bourbon = require('node-bourbon'),
     browserify = require('browserify'),
     source = require('vinyl-source-stream'),
     buffer = require('vinyl-buffer'),
     del = require('del'),
-    runSequence = require('run-sequence'),
-    sassLint = require('gulp-sass-lint');
+    runSequence = require('run-sequence');
 
 
 var pkg = require('./package.json');
@@ -95,10 +76,15 @@ gulp.task('lint:js', function () {
  * Lint sass
  */
 gulp.task('lint:sass', function () {
-    gulp.src(dirs.src + 'sass/**/*.s+(a|c)ss')
-        .pipe(sassLint())
-        .pipe(sassLint.format())
-        .pipe(sassLint.failOnError())
+    var SRC = dirs.src + '/scss/**/*.scss';
+
+    return gulp.src(SRC)
+        .pipe(plugins.debug({title: config.debug.title}))
+        .pipe(plugins.sassLint({
+            config: './.sass-lint.yml'
+        }))
+        .pipe(plugins.sassLint.format())
+        .pipe(plugins.sassLint.failOnError())
 });
 
 
@@ -152,7 +138,7 @@ gulp.task('build:js', function () {
 
 /**
  *   Compile all Sass into a single css file.
- *   add Ventorprifixes and create a Sourcemap
+ *   add Vendorprefixes and create a Sourcemap
 
  *   it uses bourbon mixins by default
  *   http://bourbon.io/
@@ -162,29 +148,30 @@ gulp.task('build:sass', function () {
     var DEST = dirs.dist + '/css/';
 
     return gulp.src(SRC)
-        .pipe(plugins.changed(DEST, {extension: '.css'}))
-        .pipe(plugins.sourcemaps.init())
         .pipe(plugins.sassGlob())
+        .pipe(plugins.sourcemaps.init())
         .pipe(plugins.sass({
             includePaths: bourbon.includePaths
         }))
-        .pipe(plugins.prefix([
+        .pipe(plugins.autoprefixer([
             'last 3 versions',
             '> 1%',
             'ie >= 7'
         ], {
             cascade: true
         }))
-        .pipe(plugins.debug({title: config.debug.title}))
+        .pipe(plugins.cssbeautify())
         .pipe(plugins.size())
+        .pipe(plugins.changed(DEST, {hasChanged: plugins.changed.compareSha1Digest, extension: '.css'}))
+        .pipe(plugins.debug({title: config.debug.title}))
         .pipe(gulp.dest(DEST))
         .pipe(plugins.rename({suffix: '.min'}))
         .pipe(plugins.sass({outputStyle: 'compressed'}))
         .pipe(plugins.debug({title: config.debug.title}))
         .pipe(plugins.size())
         .pipe(plugins.sourcemaps.write('./'))
-        .pipe(gulp.dest(DEST));
-    //.pipe(livereload());
+        .pipe(gulp.dest(DEST))
+        .pipe(livereload());
 });
 
 /**
