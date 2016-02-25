@@ -151,16 +151,6 @@ gulp.task('build:sass', function () {
         .pipe(plugins.sourcemaps.init())
         .pipe(plugins.sassGlob())
 
-        ////filter out unchanged scss files, only works when watching
-        // .pipe(plugins.gulpif(global.isWatching, plugins.cached('scss')))
-        //
-        ////find files that depend on the files that have changed
-        //.pipe(plugins.sassInheritance({dir: dirs.src + '/scss/'}))
-        //
-        ////filter out internal imports (folders and files starting with "_" )
-        //.pipe(plugins.filter(function (file) {
-        //    return !/\/_/.test(file.path) || !/^_/.test(file.relative);
-        //}))
         .pipe(plugins.debug({title: config.debug.title}))
         .pipe(plugins.changed(DEST, {
             hasChanged: plugins.changed.compareSha1Digest,
@@ -178,14 +168,28 @@ gulp.task('build:sass', function () {
         }))
         .pipe(plugins.cssbeautify())
         .pipe(plugins.debug({title: config.debug.title}))
-        .pipe(plugins.size())
-        .pipe(plugins.debug({title: config.debug.title}))
         .pipe(plugins.sourcemaps.write('./'))
         .pipe(gulp.dest(DEST));
     // .pipe(livereload());
 });
 
 
+/**
+ *   Compile all Sass into a single css file.
+ *   add Vendorprefixes and create a Sourcemap.
+ *
+ *   The output will be compressed.
+ *
+ *   Important:
+ *   In the build chain the autoprefixer should be
+ *   executed before the sass compiler.
+ *   Because, when ist executed after, the sourcemaps will
+ *   not match the given style.
+ *
+
+ *   it uses bourbon mixins by default
+ *   http://bourbon.io/
+ */
 gulp.task('minify:sass', function () {
     var SRC = dirs.src + '/scss/*.s+(a|c)ss';
     var DEST = dirs.dist + '/css/';
@@ -193,19 +197,18 @@ gulp.task('minify:sass', function () {
     return gulp.src(SRC)
         .pipe(plugins.sourcemaps.init())
         .pipe(plugins.sassGlob())
-        .pipe(plugins.sass({
-            includePaths: bourbon.includePaths,
-            outputStyle: 'compressed'
-        }).on('error', plugins.sass.logError))
-
         .pipe(plugins.autoprefixer([
             'last 3 versions',
             '> 1%',
             'ie >= 7'
         ], {
-            cascade: true
+            cascade: false
         }))
-        .pipe(plugins.changed(DEST, {hasChanged: plugins.changed.compareSha1Digest, extension: '.min.css'}))
+        .pipe(plugins.sass({
+            includePaths: bourbon.includePaths,
+            outputStyle: 'compressed'
+        }).on('error', plugins.sass.logError))
+
         .pipe(plugins.size())
         .pipe(plugins.debug({title: config.debug.title}))
         .pipe(plugins.rename({suffix: '.min'}))
@@ -221,7 +224,7 @@ gulp.task('minify:sass', function () {
 gulp.task('watch', function () {
     //livereload.listen();
     gulp.watch(dirs.src + '/js/**/*.js', ['lint:js', 'build:js']);
-    gulp.watch(dirs.src + '/scss/**/*.s+(a|c)ss', ['setWatch', 'build:sass']);   //'lint:sass'
+    gulp.watch(dirs.src + '/scss/**/*.s+(a|c)ss', ['build:sass']);   //'lint:sass'
     gulp.watch(dirs.src + '/**/*.html', ['build:html']);
     gulp.watch(dirs.src + '/img/**', ['copy:img']);
 });
