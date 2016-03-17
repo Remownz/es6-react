@@ -75,9 +75,9 @@ gulp.task('lint:js', function () {
  * Lint sass
  */
 gulp.task('lint:sass', function () {
-    var SRC = dirs.src + '/scss/**/*.scss';
+    var src = dirs.src + '/scss/**/*.scss';
 
-    return gulp.src(SRC)
+    return gulp.src(src)
         .pipe(plugins.debug({title: config.debug.title}))
         .pipe(plugins.sassLint({
             config: './.sass-lint.yml'
@@ -144,15 +144,15 @@ gulp.task('build:js', function () {
  *   http://bourbon.io/
  */
 gulp.task('build:sass', function () {
-    var SRC = dirs.src + '/scss/**/*.s+(a|c)ss';
-    var DEST = dirs.dist + '/css/';
+    var src = dirs.src + '/scss/**/*.s+(a|c)ss';
+    var dest = dirs.dist + '/css/';
 
-    return gulp.src(SRC)
+    return gulp.src(src)
         .pipe(plugins.sourcemaps.init())
         .pipe(plugins.sassGlob())
 
         .pipe(plugins.debug({title: config.debug.title}))
-        .pipe(plugins.changed(DEST, {
+        .pipe(plugins.changed(dest, {
             hasChanged: plugins.changed.compareSha1Digest,
             extension: '.css'
         }))
@@ -169,7 +169,7 @@ gulp.task('build:sass', function () {
         .pipe(plugins.cssbeautify())
         .pipe(plugins.debug({title: config.debug.title}))
         .pipe(plugins.sourcemaps.write('./'))
-        .pipe(gulp.dest(DEST));
+        .pipe(gulp.dest(dest));
     // .pipe(livereload());
 });
 
@@ -191,10 +191,10 @@ gulp.task('build:sass', function () {
  *   http://bourbon.io/
  */
 gulp.task('minify:sass', function () {
-    var SRC = dirs.src + '/scss/*.s+(a|c)ss';
-    var DEST = dirs.dist + '/css/';
+    var src = dirs.src + '/scss/*.s+(a|c)ss';
+    var dest = dirs.dist + '/css/';
 
-    return gulp.src(SRC)
+    return gulp.src(src)
         .pipe(plugins.sourcemaps.init())
         .pipe(plugins.sassGlob())
         .pipe(plugins.autoprefixer([
@@ -213,7 +213,7 @@ gulp.task('minify:sass', function () {
         .pipe(plugins.debug({title: config.debug.title}))
         .pipe(plugins.rename({suffix: '.min'}))
         .pipe(plugins.sourcemaps.write('./'))
-        .pipe(gulp.dest(DEST));
+        .pipe(gulp.dest(dest));
 
     // .pipe(livereload());
 });
@@ -227,6 +227,27 @@ gulp.task('watch', function () {
     gulp.watch(dirs.src + '/scss/**/*.s+(a|c)ss', ['build:sass']);   //'lint:sass'
     gulp.watch(dirs.src + '/**/*.html', ['build:html']);
     gulp.watch(dirs.src + '/img/**', ['copy:img']);
+});
+
+
+/**
+ * Inline css
+ */
+
+gulp.task('inline:css', function () {
+    var src = dirs.dist + '/**/*.html';
+    var dest = dirs.dist + '/inline';
+
+
+    return gulp.src(src)
+        .pipe(plugins.inlineCss({
+            applyStyleTags: true,
+            applyLinkTags: true,
+            removeStyleTags: true,
+            removeLinkTags: true
+        }))
+        .pipe(plugins.rename({suffix: '.inline'}))
+        .pipe(gulp.dest(dest));
 });
 
 
