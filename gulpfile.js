@@ -1,96 +1,66 @@
 'use strict';
 
-var gulp        = require('gulp'),
-    plugins     = require('gulp-load-plugins')({
-            rename: {
-                'gulp-sass': 'sass' ,
-                'gulp-sass-glob': 'sassGlob',
-                'gulp-autoprefixer': 'prefix',
-                'gulp-sourcemaps': 'sourcemaps',
-                'gulp-jshint': 'jshint',
-                'gulp-jscs': 'jscs',
-                'gulp-concat': 'concat',
-                'gulp-uglify': 'uglify',
-                'gulp-header': 'header',
-                'gulp-rename': 'rename',
-                'gulp-size': 'size',
-                'gulp-debug': 'debug',
-                'gulp-bundle': 'bundle',
-                'gulp-imagemin': 'imagemin',
-                'gulp-minify-html': 'minifyHTML',
-                'gulp-flatten': 'flatten',
-                'gulp-util': 'gutil'
-            }
-    }),
-    bourbon     = require('node-bourbon'),
-    browserify  = require('browserify'),
-    source      = require('vinyl-source-stream'),
-    buffer      = require('vinyl-buffer'),
-    del         = require('del'),
-    wiredep     = require('wiredep').stream,
+var gulp = require('gulp'),
+    plugins = require('gulp-load-plugins')(),
+    bourbon = require('node-bourbon'),
+    browserify = require('browserify'),
+    source = require('vinyl-source-stream'),
+    buffer = require('vinyl-buffer'),
+    del = require('del'),
     runSequence = require('run-sequence');
-
 
 var pkg = require('./package.json');
 var dirs = pkg['project-configs'].directories;
 var config = pkg['project-configs'].config;
-var banner  = require('./banner.js');
+
 
 /*************************************************************************
  *  Helper Tasks
  *************************************************************************
  *
- *  Definition von Hilfstasks
+ *
  */
 
 /**
- *  Zusammenfassung aller Kopiertasks
+ *  All Copy tasks
  */
-gulp.task('copy',[
+gulp.task('copy', [
     'copy:fonts',
     'copy:images'
 ]);
 
 /**
- *  Löscht den Ausgabeordner
+ *  Delete the output directory
  */
-gulp.task('clean', function(done) {
-   return  del([
-       dirs.dist
-   ], done);
+gulp.task('clean', function (done) {
+    return del([
+        dirs.dist
+    ], done);
 });
 
 /**
- *  Kopiert alle Schritftarten aus dem vendor Verzeichnis und legt diese in
- *  dem ausgabe Ordner unter Fonts ab.
+ *  Copy all fonts from vendor libraries.
+ *  Fonts will be placed in the output directory
  */
-gulp.task('copy:fonts', function() {
+gulp.task('copy:fonts', function () {
     return gulp.src(dirs.src + '/**/font*/*.{ttf,woff,woff2,eof,svg}')
-        .pipe(plugins.flatten({ includeParents: 0} ))
-        //.pipe(wiredep({
-        //    //directory: './src/vendor'
-        //    exclude: [ '/jquery/' ]
-        //}))
+        .pipe(plugins.flatten({includeParents: 0}))
         .pipe(gulp.dest(dirs.dist + '/fonts'));
 });
 
 
 /**
- *  Kopiert alles Bilder aus dem src in den Ziel Ordner und minimiert diese.
+ *  Copy all images
  */
-gulp.task('copy:images', function() {
+gulp.task('copy:images', function () {
     return gulp.src(dirs.src + '/img/')
-        .pipe(plugins.debug({title: config.debug.title }))
-        .pipe(plugins.size())
-        .pipe(plugins.imagemin())
+        .pipe(plugins.debug({title: config.debug.title}))
         .pipe(plugins.size())
         .pipe(gulp.dest(dirs.dist + '/img/'));
 });
 
 /**
- *  Benutzt die jshint Bibliothekt.
- *  Jshint prüft den erstellten JS Code und gibt hinweise zur Optimierung
- *
+ *  It uses the JSlint library
  *  jshint.com
  */
 gulp.task('lint:js', function () {
@@ -98,7 +68,22 @@ gulp.task('lint:js', function () {
         //.pipe(plugins.jscs())
         .pipe(plugins.jshint())
         .pipe(plugins.jshint.reporter('jshint-stylish'));
-        //.pipe(plugins.jshint.reporter('fail'));
+    //.pipe(plugins.jshint.reporter('fail'));
+});
+
+/**
+ * Lint sass
+ */
+gulp.task('lint:sass', function () {
+    var src = dirs.src + '/scss/**/*.scss';
+
+    return gulp.src(src)
+        .pipe(plugins.debug({title: config.debug.title}))
+        .pipe(plugins.sassLint({
+            config: './.sass-lint.yml'
+        }))
+        .pipe(plugins.sassLint.format())
+        .pipe(plugins.sassLint.failOnError())
 });
 
 
@@ -106,111 +91,172 @@ gulp.task('lint:js', function () {
  *  Build Tasks
  *************************************************************************
  *
- *  Alle benötigten Buid Tasks
+ * all needed build tasks
  */
 
 /**
- * Zusammenfassung aller Build Tasks
+ * all  build tasks
  */
 gulp.task('build', [
     'build:html',
     'build:sass',
+    'minify:sass',
     'build:js'
 ]);
 
 /**
- * Kopiert alle HTML Files in den Ziel Ordner und minimiert diese
+ * copy all html files
  */
 gulp.task('build:html', function () {
-     return gulp.src(dirs.src + '/**/*.html')
-        .pipe(plugins.debug({title: config.debug.title }))
+    return gulp.src(dirs.src + '/**/*.html')
+        .pipe(plugins.debug({title: config.debug.title}))
         .pipe(plugins.size())
-        //.pipe(wiredep({
-        //    //directory: './src/vendor'
-        //    exclude: [ '/jquery/' ]
-        //}))
-        .pipe(plugins.minifyHTML())
         .pipe(gulp.dest(dirs.dist));
-
 });
 
 /**
- *  Fügt alle JS scripts zusammen, fügt einen Header ein, sowie
- *  wird das Js File in zwei Versionen ausgeliefert, einer Normalen und einer min.
+ *  Bundle all JS Files into a single one. Add a Header to the files
+ *  also minify the output js.
  */
-gulp.task('build:js', function() {
-     browserify(dirs.src + '/js/app.js', {debug: true})
-            .bundle()
-            .pipe(source('app.js'))
-            .pipe(buffer())
-            .pipe(plugins.header(banner, {pkg: pkg}))
-            .pipe(plugins.debug({title: config.debug.title }))
-            .pipe(plugins.size())
-            .pipe(gulp.dest(dirs.dist + '/js/'))
-            .pipe(plugins.rename({suffix: '.min'}))
-            .pipe(plugins.uglify())
-            .pipe(plugins.header(banner, {pkg: pkg}))
-            .pipe(plugins.debug({title: config.debug.title }))
-            .pipe(plugins.size())
-            .pipe(gulp.dest(dirs.dist + '/js'));
+gulp.task('build:js', function () {
+    browserify(dirs.src + '/js/app.js', {debug: true})
+        .bundle()
+        .pipe(source('app.js'))
+        .pipe(buffer())
+        .pipe(plugins.sourcemaps.init())
+        .pipe(plugins.debug({title: config.debug.title}))
+        .pipe(plugins.size())
+        .pipe(plugins.rename({suffix: '.min'}))
+        .pipe(plugins.uglify())
+        .pipe(plugins.debug({title: config.debug.title}))
+        .pipe(plugins.size())
+        .pipe(plugins.sourcemaps.write('./'))
+        .pipe(gulp.dest(dirs.dist + '/js'))
+        .pipe(livereload());
 });
 
 
 /**
- *   Kompiliert das Sass File zu einer CSS Datei.
- *   Fügt alle Vendor SCSS deteien hinzu, erstellt eine Sourcemap
- *   sowie kümmert sich um die Vender-Prefixe
- *
- *   Es wird Standardmäßig die Mixinsammlung Bourbon hinzugefügt
+ *   Compile all Sass into a single css file.
+ *   add Vendorprefixes and create a Sourcemap
+
+ *   it uses bourbon mixins by default
  *   http://bourbon.io/
  */
-gulp.task('build:sass', function() {
-     gulp.src(dirs.src + '/scss/app.scss')
-        .pipe(wiredep({directory: './src/vendor'}))
+gulp.task('build:sass', function () {
+    var src = dirs.src + '/scss/**/*.s+(a|c)ss';
+    var dest = dirs.dist + '/css/';
+
+    return gulp.src(src)
         .pipe(plugins.sourcemaps.init())
         .pipe(plugins.sassGlob())
+
+        .pipe(plugins.debug({title: config.debug.title}))
+        .pipe(plugins.changed(dest, {
+            hasChanged: plugins.changed.compareSha1Digest,
+            extension: '.css'
+        }))
         .pipe(plugins.sass({
             includePaths: bourbon.includePaths
-        }))
-        .pipe(plugins.prefix([
+        }).on('error', plugins.sass.logError))
+        .pipe(plugins.autoprefixer([
             'last 3 versions',
             '> 1%',
             'ie >= 7'
         ], {
             cascade: true
         }))
-        .pipe(plugins.header(banner, {pkg: pkg}))
-        .pipe(plugins.debug({title: config.debug.title }))
-        .pipe(plugins.size())
-        .pipe(gulp.dest(dirs.dist + '/css/'))
-        .pipe(plugins.rename({suffix: '.min'}))
-        .pipe(plugins.sass({ outputStyle: 'compressed' }))
-        .pipe(plugins.header(banner, {pkg: pkg}))
-        .pipe(plugins.debug({title: config.debug.title }))
-        .pipe(plugins.size())
+        .pipe(plugins.cssbeautify())
+        .pipe(plugins.debug({title: config.debug.title}))
         .pipe(plugins.sourcemaps.write('./'))
-        .pipe(gulp.dest(dirs.dist + '/css/'));
+        .pipe(gulp.dest(dest));
+    // .pipe(livereload());
+});
+
+
+/**
+ *   Compile all Sass into a single css file.
+ *   add Vendorprefixes and create a Sourcemap.
+ *
+ *   The output will be compressed.
+ *
+ *   Important:
+ *   In the build chain the autoprefixer should be
+ *   executed before the sass compiler.
+ *   Because, when ist executed after, the sourcemaps will
+ *   not match the given style.
+ *
+
+ *   it uses bourbon mixins by default
+ *   http://bourbon.io/
+ */
+gulp.task('minify:sass', function () {
+    var src = dirs.src + '/scss/*.s+(a|c)ss';
+    var dest = dirs.dist + '/css/';
+
+    return gulp.src(src)
+        .pipe(plugins.sourcemaps.init())
+        .pipe(plugins.sassGlob())
+        .pipe(plugins.autoprefixer([
+            'last 3 versions',
+            '> 1%',
+            'ie >= 7'
+        ], {
+            cascade: false
+        }))
+        .pipe(plugins.sass({
+            includePaths: bourbon.includePaths,
+            outputStyle: 'compressed'
+        }).on('error', plugins.sass.logError))
+
+        .pipe(plugins.size())
+        .pipe(plugins.debug({title: config.debug.title}))
+        .pipe(plugins.rename({suffix: '.min'}))
+        .pipe(plugins.sourcemaps.write('./'))
+        .pipe(gulp.dest(dest));
+
+    // .pipe(livereload());
 });
 
 /**
- *  Beobachtet Deteiänderungen und führt einen ensprechenden Taks erneut aus.
+ * Watch all changes
  */
 gulp.task('watch', function () {
+    //livereload.listen();
     gulp.watch(dirs.src + '/js/**/*.js', ['lint:js', 'build:js']);
-    gulp.watch(dirs.src + '/scss/**/*.scss', ['build:sass']);
+    gulp.watch(dirs.src + '/scss/**/*.s+(a|c)ss', ['build:sass']);   //'lint:sass'
     gulp.watch(dirs.src + '/**/*.html', ['build:html']);
     gulp.watch(dirs.src + '/img/**', ['copy:img']);
 });
 
 
 /**
- *  Überschreiben des Defaulttask
- *  Es werden nacheinader folgende Task ausgefürt,
- *  Clean, Copy, Build und watch
+ * Inline css
  */
 
-gulp.task('default', function(callback) {
+gulp.task('inline:css', function () {
+    var src = dirs.dist + '/**/*.html';
+    var dest = dirs.dist + '/inline';
+
+
+    return gulp.src(src)
+        .pipe(plugins.inlineCss({
+            applyStyleTags: true,
+            applyLinkTags: true,
+            removeStyleTags: true,
+            removeLinkTags: true
+        }))
+        .pipe(plugins.rename({suffix: '.inline'}))
+        .pipe(gulp.dest(dest));
+});
+
+
+/**
+ *  default Task
+ */
+
+gulp.task('default', function (callback) {
     runSequence('clean',
-        ['copy','build','watch'],
+        ['copy', 'build', 'watch'],
         callback)
 });
