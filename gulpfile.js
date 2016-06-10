@@ -7,6 +7,9 @@ var gulp = require('gulp'),
     source = require('vinyl-source-stream'),
     buffer = require('vinyl-buffer'),
     del = require('del'),
+    gutil = require('gulp-util'),
+    sourcemaps = require('gulp-sourcemaps'),
+    uglify = require('gulp-uglify'),
     runSequence = require('run-sequence');
 
 var pkg = require('./package.json');
@@ -48,7 +51,6 @@ gulp.task('copy:fonts', function () {
         .pipe(gulp.dest(dirs.dist + '/fonts'));
 });
 
-
 /**
  *  Copy all images
  */
@@ -58,34 +60,6 @@ gulp.task('copy:images', function () {
         .pipe(plugins.size())
         .pipe(gulp.dest(dirs.dist + '/img/'));
 });
-
-/**
- *  It uses the JSlint library
- *  jshint.com
- */
-gulp.task('lint:js', function () {
-    return gulp.src(dirs.src + '/js/*.js')
-        //.pipe(plugins.jscs())
-        .pipe(plugins.jshint())
-        .pipe(plugins.jshint.reporter('jshint-stylish'));
-    //.pipe(plugins.jshint.reporter('fail'));
-});
-
-/**
- * Lint sass
- */
-gulp.task('lint:sass', function () {
-    var src = dirs.src + '/scss/**/*.scss';
-
-    return gulp.src(src)
-        .pipe(plugins.debug({title: config.debug.title}))
-        .pipe(plugins.sassLint({
-            config: './.sass-lint.yml'
-        }))
-        .pipe(plugins.sassLint.format())
-        .pipe(plugins.sassLint.failOnError())
-});
-
 
 /*************************************************************************
  *  Build Tasks
@@ -118,21 +92,19 @@ gulp.task('build:html', function () {
  *  Bundle all JS Files into a single one. Add a Header to the files
  *  also minify the output js.
  */
-gulp.task('build:js', function () {
-    browserify(dirs.src + '/js/app.js', {debug: true})
-        .bundle()
-        .pipe(source('app.js'))
+gulp.task('build:js', function() {
+    var b = browserify(dirs.src + '/js/app.js', {
+        debug: true
+    });
+
+    return b.bundle()
+        .pipe(source('app.min.js'))
         .pipe(buffer())
-        .pipe(plugins.sourcemaps.init())
-        .pipe(plugins.debug({title: config.debug.title}))
-        .pipe(plugins.size())
-        .pipe(plugins.rename({suffix: '.min'}))
-        .pipe(plugins.uglify())
-        .pipe(plugins.debug({title: config.debug.title}))
-        .pipe(plugins.size())
-        .pipe(plugins.sourcemaps.write('./'))
-        .pipe(gulp.dest(dirs.dist + '/js'))
-        .pipe(livereload());
+        .pipe(sourcemaps.init({loadMaps: true}))
+        .pipe(uglify({compress: false}))
+        .on('error', gutil.log)
+        .pipe(sourcemaps.write('./maps/'))
+        .pipe(gulp.dest(dirs.dist + '/js'));
 });
 
 
@@ -157,7 +129,8 @@ gulp.task('build:sass', function () {
             extension: '.css'
         }))
         .pipe(plugins.sass({
-            includePaths: bourbon.includePaths
+            includePaths: bourbon.includePaths,
+            outputStyle: 'expanded'
         }).on('error', plugins.sass.logError))
         .pipe(plugins.autoprefixer([
             'last 3 versions',
@@ -223,8 +196,8 @@ gulp.task('minify:sass', function () {
  */
 gulp.task('watch', function () {
     //livereload.listen();
-    gulp.watch(dirs.src + '/js/**/*.js', ['lint:js', 'build:js']);
-    gulp.watch(dirs.src + '/scss/**/*.s+(a|c)ss', ['build:sass']);   //'lint:sass'
+    gulp.watch(dirs.src + '/js/**/*.js', ['build:js']);
+    gulp.watch(dirs.src + '/scss/**/*.s+(a|c)ss', ['build:sass']);
     gulp.watch(dirs.src + '/**/*.html', ['build:html']);
     gulp.watch(dirs.src + '/img/**', ['copy:img']);
 });

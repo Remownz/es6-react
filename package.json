@@ -1,6 +1,6 @@
 {
   "name": "frontend-setup",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "frontend setup mit gulp",
   "main": "index.js",
   "scripts": {
@@ -22,22 +22,18 @@
     "gulp-flatten": "^0.2.0",
     "gulp-inline-css": "^3.1.0",
     "gulp-jscs": "^3.0.2",
-    "gulp-jshint": "^1.12.0",
     "gulp-livereload": "^3.8.1",
     "gulp-load-plugins": "^1.1.0",
     "gulp-rename": "^1.2.2",
     "gulp-sass": "^2.2.0",
     "gulp-sass-glob": "0.0.2",
-    "gulp-sass-lint": "^1.1.1",
-    "gulp-scss-lint": "^0.3.9",
     "gulp-size": "^2.0.0",
     "gulp-sourcemaps": "^1.6.0",
     "gulp-uglify": "^1.5.1",
-    "jshint-stylish": "^2.1.0",
+    "jquery": "^3.0.0",
     "load-plugins": "^2.1.0",
     "node-bourbon": "^4.2.3",
     "run-sequence": "^1.1.4",
-    "sass-lint": "^1.5.0",
     "vinyl-buffer": "^1.0.0",
     "vinyl-source-stream": "^1.1.0"
   },
@@ -53,5 +49,8 @@
       }
     }
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "gulp-concat-css": "^2.2.0",
+    "gulp-util": "^3.0.7"
+  }
 }

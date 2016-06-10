@@ -1,0 +1,25 @@
+scss_files: 'src/scss/**/*.scss'
+
+linters:
+  BorderZero:
+    enabled: true
+    convention: none
+  Indentation:
+    severity: warning
+    width: 4
+  StringQuotes:
+    severity: warning
+    style: double_quotes
+  PropertySortOrder:
+    enabled: false
+  LeadingZero:
+    enabled: true
+    style: include_zero
+  ImportantRule:
+    enabled: false
+  Comment:
+    enabled: false
+  NestingDepth:
+    enabled: true
+    max_depth: 3
+    ignore_parent_selectors: true
