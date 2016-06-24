@@ -74,7 +74,6 @@ gulp.task('copy:images', function () {
 gulp.task('build', [
     'build:html',
     'build:sass:dev',
-    'minify:sass',
     'build:js'
 ]);
 
@@ -157,7 +156,6 @@ gulp.task('build:sass:prod', function () {
         ], {
             cascade: true
         }))
-        .pipe(plugins.rename({suffix: '.min'}))
         .pipe(gulp.dest(dest));
 });
 
