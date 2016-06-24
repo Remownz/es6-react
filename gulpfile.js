@@ -77,6 +77,12 @@ gulp.task('build', [
     'build:js'
 ]);
 
+gulp.task('build:prod', [
+    'build:html',
+    'build:sass:prod',
+    'build:js:prod'
+]);
+
 /**
  * copy all html files
  */
@@ -106,6 +112,16 @@ gulp.task('build:js', function() {
         .pipe(gulp.dest(dirs.dist + '/js'));
 });
 
+gulp.task('build:js:prod', function() {
+    var b = browserify(dirs.src + '/js/app.js');
+
+    return b.bundle()
+        .pipe(source('app.min.js'))
+        .pipe(buffer())
+        .pipe(uglify({compress: true}))
+        .on('error', gutil.log)
+        .pipe(gulp.dest(dirs.dist + '/js'));
+});
 
 /**
  *   Compile all Sass into a single css file.
@@ -177,7 +193,6 @@ gulp.task('watch', function () {
 gulp.task('inline:css', function () {
     var src = dirs.dist + '/**/*.html';
     var dest = dirs.dist + '/inline';
-
 
     return gulp.src(src)
         .pipe(plugins.inlineCss({

@@ -46,7 +46,8 @@
     "directories": {
       "dist": "dist",
       "src": "src",
-      "test": "test"
+      "test": "test",
+	  "libraries": "libraries"
     },
     "config": {
       "debug": {
