@@ -1,5 +1,4 @@
-
-var $ = require('jquery');
+var jQuery = require('jquery');
 
 (function($) {
     'use strict';
@@ -11,4 +10,4 @@ var $ = require('jquery');
 
     $('body').append(button);
 
-})();
+})(jQuery);
