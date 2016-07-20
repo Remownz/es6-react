@@ -10,13 +10,21 @@ var gulp = require('gulp'),
     gutil = require('gulp-util'),
     sourcemaps = require('gulp-sourcemaps'),
     uglify = require('gulp-uglify'),
-    runSequence = require('run-sequence');
+    runSequence = require('run-sequence'),
+    path = require("path");
 
 var pkg = require('./package.json');
 var dirs = pkg['project-configs'].directories;
 var config = pkg['project-configs'].config;
 
 var sassIncludePath = bourbon.includePaths.concat([path.join(__dirname, dirs.libraries)]);
+
+// External dependencies you do not want to rebundle while developing,
+// but include in your application deployment
+var dependencies = [];
+// keep a count of the times a task refires
+var scriptsCount = 0;
+
 /*************************************************************************
  *  Helper Tasks
  *************************************************************************
@@ -97,30 +105,12 @@ gulp.task('build:html', function () {
  *  Bundle all JS Files into a single one. Add a Header to the files
  *  also minify the output js.
  */
-gulp.task('build:js', function() {
-    var b = browserify(dirs.src + '/js/app.js', {
-        debug: true
-    });
-
-    return b.bundle()
-        .pipe(source('app.min.js'))
-        .pipe(buffer())
-        .pipe(sourcemaps.init({loadMaps: true}))
-        .pipe(uglify({compress: false}))
-        .on('error', gutil.log)
-        .pipe(sourcemaps.write('./maps/'))
-        .pipe(gulp.dest(dirs.dist + '/js'));
+gulp.task('build:js', function () {
+    bundleApp(false);
 });
 
-gulp.task('build:js:prod', function() {
-    var b = browserify(dirs.src + '/js/app.js');
-
-    return b.bundle()
-        .pipe(source('app.min.js'))
-        .pipe(buffer())
-        .pipe(uglify({compress: true}))
-        .on('error', gutil.log)
-        .pipe(gulp.dest(dirs.dist + '/js'));
+gulp.task('build:js:prod', function () {
+    bundleApp(true);
 });
 
 /**
@@ -214,3 +204,47 @@ gulp.task('default', function (callback) {
         ['copy', 'build', 'watch'],
         callback)
 });
+
+
+// Private Functions
+// ----------------------------------------------------------------------------
+function bundleApp(isProduction) {
+    scriptsCount++;
+    // Browserify will bundle all our js files together in to one and will let
+    // us use modules in the front end.
+    var appBundler = browserify({
+        entries: dirs.src + '/js/app.js',
+        debug: true
+    });
+
+    // If it's not for production, a separate vendors.js file will be created
+    // the first time gulp is run so that we don't have to rebundle things like
+    // react everytime there's a change in the js file
+    if (!isProduction && scriptsCount === 1) {
+        // create vendors.js for dev environment.
+        browserify({
+            require: dependencies,
+            debug: true
+        })
+            .bundle()
+            .on('error', gutil.log)
+            .pipe(source('vendors.js'))
+            .pipe(gulp.dest(dirs.dist + '/js'));
+    }
+    if (!isProduction) {
+        // make the dependencies external so they dont get bundled by the
+        // app bundler. Dependencies are already bundled in vendor.js for
+        // development environments.
+        dependencies.forEach(function (dep) {
+            appBundler.external(dep);
+        })
+    }
+
+    appBundler
+        // transform ES6 to ES5 with babelify
+        .transform("babelify", {presets: ["es2015"]})
+        .bundle()
+        .on('error', gutil.log)
+        .pipe(source('bundle.js'))
+        .pipe(gulp.dest(dirs.dist + '/js'));
+}

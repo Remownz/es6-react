@@ -1,13 +1,11 @@
-var jQuery = require('jquery');
+const jQuery = require('jquery');
 
-(function($) {
+(function ($) {
     'use strict';
 
-    var button =  $('<button/>').click(function() {
-        console.log('hallo');
-
+    const button = $('<button/>').click(function () {
+        console.log('hello world');
     });
 
     $('body').append(button);
-
 })(jQuery);
