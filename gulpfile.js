@@ -1,6 +1,7 @@
 'use strict';
 
 var gulp = require('gulp'),
+    connect = require('gulp-connect'),
     plugins = require('gulp-load-plugins')(),
     bourbon = require('node-bourbon'),
     browserify = require('browserify'),
@@ -21,7 +22,8 @@ var sassIncludePath = bourbon.includePaths.concat([path.join(__dirname, dirs.lib
 
 // External dependencies you do not want to rebundle while developing,
 // but include in your application deployment
-var dependencies = [];
+var dependencies = Object.keys(pkg['dependencies']);
+
 // keep a count of the times a task refires
 var scriptsCount = 0;
 
@@ -33,40 +35,12 @@ var scriptsCount = 0;
  */
 
 /**
- *  All Copy tasks
- */
-gulp.task('copy', [
-    'copy:fonts',
-    'copy:images'
-]);
-
-/**
  *  Delete the output directory
  */
 gulp.task('clean', function (done) {
     return del([
         dirs.dist
     ], done);
-});
-
-/**
- *  Copy all fonts from vendor libraries.
- *  Fonts will be placed in the output directory
- */
-gulp.task('copy:fonts', function () {
-    return gulp.src(dirs.src + '/**/font*/*.{ttf,woff,woff2,eof,svg}')
-        .pipe(plugins.flatten({includeParents: 0}))
-        .pipe(gulp.dest(dirs.dist + '/fonts'));
-});
-
-/**
- *  Copy all images
- */
-gulp.task('copy:images', function () {
-    return gulp.src(dirs.src + '/img/')
-        .pipe(plugins.debug({title: config.debug.title}))
-        .pipe(plugins.size())
-        .pipe(gulp.dest(dirs.dist + '/img/'));
 });
 
 /*************************************************************************
@@ -195,13 +169,21 @@ gulp.task('inline:css', function () {
         .pipe(gulp.dest(dest));
 });
 
+gulp.task('connect', function () {
+    connect.server({
+        root: 'web',
+        port: 3000,
+        livereload: true
+    });
+});
+
 /**
  *  default Task
  */
 
 gulp.task('default', function (callback) {
     runSequence('clean',
-        ['copy', 'build', 'watch'],
+        ['build', 'connect', 'watch'],
         callback)
 });
 
@@ -213,7 +195,7 @@ function bundleApp(isProduction) {
     // Browserify will bundle all our js files together in to one and will let
     // us use modules in the front end.
     var appBundler = browserify({
-        entries: dirs.src + '/js/app.js',
+        entries: dirs.src + '/app.js',
         debug: true
     });
 
@@ -242,7 +224,7 @@ function bundleApp(isProduction) {
 
     appBundler
         // transform ES6 to ES5 with babelify
-        .transform("babelify", {presets: ["es2015"]})
+        .transform("babelify", {presets: ["es2015", "react"]})
         .bundle()
         .on('error', gutil.log)
         .pipe(source('bundle.js'))
