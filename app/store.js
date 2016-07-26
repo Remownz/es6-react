@@ -4,7 +4,7 @@ import thunk from 'redux-thunk';
 import reducers from './reducers';
 
 const middleware = [thunk];
-
+let devtools;
 if (process.env.NODE_ENV === 'development') {
     if (window.devToolsExtension) {
         devtools = window.devToolsExtension();

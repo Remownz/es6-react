@@ -1,22 +1,36 @@
 'use strict';
 
 var gulp = require('gulp'),
-    connect = require('gulp-connect'),
+    browserSync = require('browser-sync').create(),
     plugins = require('gulp-load-plugins')(),
     bourbon = require('node-bourbon'),
     browserify = require('browserify'),
+    watchify = require('watchify'),
+    babel = require('babelify'),
     source = require('vinyl-source-stream'),
     buffer = require('vinyl-buffer'),
     del = require('del'),
     gutil = require('gulp-util'),
+    assign = require('lodash.assign'),
     sourcemaps = require('gulp-sourcemaps'),
     uglify = require('gulp-uglify'),
     runSequence = require('run-sequence'),
-    path = require("path");
+    path = require("path"),
+    envify = require('loose-envify/custom');
 
 var pkg = require('./package.json');
 var dirs = pkg['project-configs'].directories;
-var config = pkg['project-configs'].config;
+var config = assign({},
+    pkg['project-configs'].config, {
+        js: {
+            entries: dirs.src + '/app.js',
+            extensions: [' ', '.js', '.jsx'],
+            //cache: {},
+            //packageCache: {},
+            plugin: [watchify]
+        }
+    }
+);
 
 var sassIncludePath = bourbon.includePaths.concat([path.join(__dirname, dirs.libraries)]);
 
@@ -24,24 +38,7 @@ var sassIncludePath = bourbon.includePaths.concat([path.join(__dirname, dirs.lib
 // but include in your application deployment
 var dependencies = Object.keys(pkg['dependencies']);
 
-// keep a count of the times a task refires
-var scriptsCount = 0;
 
-/*************************************************************************
- *  Helper Tasks
- *************************************************************************
- *
- *
- */
-
-/**
- *  Delete the output directory
- */
-gulp.task('clean', function (done) {
-    return del([
-        dirs.dist
-    ], done);
-});
 
 /*************************************************************************
  *  Build Tasks
@@ -50,41 +47,34 @@ gulp.task('clean', function (done) {
  * all needed build tasks
  */
 
-/**
- * all  build tasks
- */
 gulp.task('build', [
-    'build:html',
-    'build:sass:dev',
-    'build:js'
+    'bundle',
+    'build:sass:prod'
 ]);
 
-gulp.task('build:prod', [
-    'build:html',
-    'build:sass:prod',
-    'build:js:prod'
-]);
 
-/**
- * copy all html files
- */
-gulp.task('build:html', function () {
-    return gulp.src(dirs.src + '/**/*.html')
-        .pipe(plugins.debug({title: config.debug.title}))
-        .pipe(plugins.size())
-        .pipe(gulp.dest(dirs.dist));
-});
 
 /**
  *  Bundle all JS Files into a single one. Add a Header to the files
  *  also minify the output js.
  */
-gulp.task('build:js', function () {
-    bundleApp(false);
+gulp.task('bundle:dev', function () {
+    var args = assign(config.js, watchify.args, {debug: true}); // Merge in default watchify args with browserify arguments
+
+    var bundler = browserify(args) // Browserify
+        .plugin(watchify, {ignoreWatch: ['**/node_modules/**']}); // Watchify to watch source file changes
+
+    bundleApp(bundler, false); // Run the bundle the first time (required for Watchify to kick in)
+
+    bundler.on('update', function () {
+        bundleApp(bundler, false); // Re-run bundle on source updates
+    });
 });
 
-gulp.task('build:js:prod', function () {
-    bundleApp(true);
+gulp.task('bundle', function () {
+    var bundler = browserify(config.js);
+
+    bundleApp(bundler, true);
 });
 
 /**
@@ -142,91 +132,73 @@ gulp.task('build:sass:prod', function () {
 /**
  * Watch all changes
  */
-gulp.task('watch', function () {
-    //livereload.listen();
-    gulp.watch(dirs.src + '/js/**/*.js', ['build:js']);
-    gulp.watch(dirs.src + '/scss/**/*.s+(a|c)ss', ['build:sass:dev']);
-    gulp.watch(dirs.src + '/**/*.html', ['build:html']);
-    gulp.watch(dirs.src + '/img/**', ['copy:img']);
-});
 
-/**
- * Inline css
- */
-
-gulp.task('inline:css', function () {
-    var src = dirs.dist + '/**/*.html';
-    var dest = dirs.dist + '/inline';
-
-    return gulp.src(src)
-        .pipe(plugins.inlineCss({
-            applyStyleTags: true,
-            applyLinkTags: true,
-            removeStyleTags: true,
-            removeLinkTags: true
-        }))
-        .pipe(plugins.rename({suffix: '.inline'}))
-        .pipe(gulp.dest(dest));
-});
-
-gulp.task('connect', function () {
-    connect.server({
-        root: 'web',
-        port: 3000,
-        livereload: true
+gulp.task('watch', function()
+{
+    var watcher = gulp.watch(dirs.src + '/**/*.*');
+    watcher.on('change', function(event)
+    {
+        console.log('File ' + event.path + ' was ' + event.type + ', running tasks...');
     });
+
+    gulp.watch(dirs.src + '/scss/**/*.s+(a|c)ss', ['build:sass:dev']);
 });
+
 
 /**
  *  default Task
  */
 
-gulp.task('default', function (callback) {
-    runSequence('clean',
-        ['build', 'connect', 'watch'],
-        callback)
+// Gulp task for build
+gulp.task('browser-sync', function () {
+    browserSync.init({
+        server: {
+            port: 3000,
+            baseDir: "./web"
+        }
+    });
 });
+
+gulp.task('default', [
+    'browser-sync',
+    'bundle:dev',
+    'watch'
+]);
 
 
 // Private Functions
 // ----------------------------------------------------------------------------
-function bundleApp(isProduction) {
-    scriptsCount++;
-    // Browserify will bundle all our js files together in to one and will let
-    // us use modules in the front end.
-    var appBundler = browserify({
-        entries: dirs.src + '/app.js',
-        debug: true
-    });
+function bundleApp(appBundler, isProduction) {
+    console.log('Production bundle: ' + isProduction);
 
-    // If it's not for production, a separate vendors.js file will be created
-    // the first time gulp is run so that we don't have to rebundle things like
-    // react everytime there's a change in the js file
-    if (!isProduction && scriptsCount === 1) {
-        // create vendors.js for dev environment.
-        browserify({
-            require: dependencies,
-            debug: true
-        })
-            .bundle()
-            .on('error', gutil.log)
-            .pipe(source('vendors.js'))
-            .pipe(gulp.dest(dirs.dist + '/js'));
-    }
-    if (!isProduction) {
-        // make the dependencies external so they dont get bundled by the
-        // app bundler. Dependencies are already bundled in vendor.js for
-        // development environments.
-        dependencies.forEach(function (dep) {
-            appBundler.external(dep);
-        })
+    if (isProduction) {
+        process.env.NODE_ENV = 'production';
     }
 
     appBundler
         // transform ES6 to ES5 with babelify
-        .transform("babelify", {presets: ["es2015", "react"]})
+        .transform(babel.configure({
+            presets: ['es2015', 'react']
+        }))
+        .transform(envify({
+            global: true,
+            _: 'purge',
+            NODE_ENV: !isProduction ? 'development' : 'production'
+        }))
         .bundle()
-        .on('error', gutil.log)
+        .on('log', gutil.log)
+        .on('error', function (err) {
+            console.log(err.message);
+            browserSync.notify(err.message, 3000);
+            this.emit('end');
+        })
+
         .pipe(source('bundle.js'))
-        .pipe(gulp.dest(dirs.dist + '/js'));
+        .pipe(buffer())
+        .pipe(sourcemaps.init({loadMaps: true}))
+        .pipe(uglify({ compress: false}))
+        .on('error', gutil.log)
+        .pipe(sourcemaps.write('./'))
+        .pipe(gulp.dest(dirs.dist + '/js'))
+        .pipe(browserSync.stream({once: true}));
 }

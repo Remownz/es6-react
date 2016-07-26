@@ -1,10 +1,13 @@
 import React from 'react';
 
-export const HelloWorld = () => {
+const HelloWorld = ({name}) => {
+
     return (
-        <div>Hallo Welt</div>
+        <div>Hallo Welt! {name}</div>
     );
 };
 
 HelloWorld.propTypes = {
 };
+
+export default HelloWorld;
