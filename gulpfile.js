@@ -14,7 +14,6 @@ var gulp = require('gulp'),
     assign = require('lodash.assign'),
     sourcemaps = require('gulp-sourcemaps'),
     uglify = require('gulp-uglify'),
-    runSequence = require('run-sequence'),
     path = require("path"),
     envify = require('loose-envify/custom');
 
@@ -25,9 +24,8 @@ var config = assign({},
         js: {
             entries: dirs.src + '/app.js',
             extensions: [' ', '.js', '.jsx'],
-            //cache: {},
-            //packageCache: {},
-            plugin: [watchify]
+            cache: {},
+            packageCache: {}
         }
     }
 );
@@ -37,7 +35,6 @@ var sassIncludePath = bourbon.includePaths.concat([path.join(__dirname, dirs.lib
 // External dependencies you do not want to rebundle while developing,
 // but include in your application deployment
 var dependencies = Object.keys(pkg['dependencies']);
-
 
 
 /*************************************************************************
@@ -52,7 +49,12 @@ gulp.task('build', [
     'build:sass:prod'
 ]);
 
-
+gulp.task('build:dev', [
+    'browser-sync',
+    'watch',
+    'bundle:dev',
+    'build:sass:dev'
+]);
 
 /**
  *  Bundle all JS Files into a single one. Add a Header to the files
@@ -62,7 +64,7 @@ gulp.task('bundle:dev', function () {
     var args = assign(config.js, watchify.args, {debug: true}); // Merge in default watchify args with browserify arguments
 
     var bundler = browserify(args) // Browserify
-        .plugin(watchify, {ignoreWatch: ['**/node_modules/**']}); // Watchify to watch source file changes
+        .plugin(watchify); // Watchify to watch source file changes
 
     bundleApp(bundler, false); // Run the bundle the first time (required for Watchify to kick in)
 
@@ -133,11 +135,9 @@ gulp.task('build:sass:prod', function () {
  * Watch all changes
  */
 
-gulp.task('watch', function()
-{
+gulp.task('watch', function () {
     var watcher = gulp.watch(dirs.src + '/**/*.*');
-    watcher.on('change', function(event)
-    {
+    watcher.on('change', function (event) {
         console.log('File ' + event.path + ' was ' + event.type + ', running tasks...');
     });
 
@@ -161,8 +161,7 @@ gulp.task('browser-sync', function () {
 
 gulp.task('default', [
     'browser-sync',
-    'bundle:dev',
-    'watch'
+    'bundle:dev'
 ]);
 
 
@@ -184,21 +183,37 @@ function bundleApp(appBundler, isProduction) {
             global: true,
             _: 'purge',
             NODE_ENV: !isProduction ? 'development' : 'production'
-        }))
-        .bundle()
-        .on('log', gutil.log)
-        .on('error', function (err) {
-            console.log(err.message);
-            browserSync.notify(err.message, 3000);
-            this.emit('end');
-        })
+        }));
 
-        .pipe(source('bundle.js'))
-        .pipe(buffer())
-        .pipe(sourcemaps.init({loadMaps: true}))
-        .pipe(uglify({ compress: false}))
-        .on('error', gutil.log)
-        .pipe(sourcemaps.write('./'))
-        .pipe(gulp.dest(dirs.dist + '/js'))
-        .pipe(browserSync.stream({once: true}));
+    if (isProduction) {
+        appBundler
+            .bundle()
+            .on('log', gutil.log)
+            .on('error', function (err) {
+                console.log(err.message);
+                browserSync.notify(err.message, 3000);
+                this.emit('end');
+            })
+            .pipe(source('bundle.js'))
+            .pipe(buffer())
+            .pipe(sourcemaps.init({loadMaps: true}))
+            .pipe(uglify())
+            .on('error', gutil.log)
+            .pipe(sourcemaps.write('./'))
+            .pipe(gulp.dest(dirs.dist + '/js'));
+    } else {
+        appBundler
+            .bundle()
+            .on('log', gutil.log)
+            .on('error', function (err) {
+                console.log(err.message);
+                browserSync.notify(err.message, 3000);
+                this.emit('end');
+            })
+            .pipe(source('bundle.js'))
+            .pipe(gulp.dest(dirs.dist + '/js'))
+            .pipe(browserSync.stream({once: true}));
+    }
+
+
 }
